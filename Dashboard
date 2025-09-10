@@ -1,1 +1,160 @@
+import React, { useState, useEffect } from "react";
+import { User } from "@/entities/User";
+import { StudySession, QuizAttempt } from "@/entities/all";
+import { format } from "date-fns";
+import { motion } from "framer-motion";
+import { 
+    Clock, 
+    Brain, 
+    Trophy,
+} from "lucide-react";
 
+import QuickActions from "../components/dashboard/QuickActions";
+import StudyStreakCard from "../components/dashboard/StudyStreakCard";
+import RecentActivity from "../components/dashboard/RecentActivity";
+import PerformanceOverview from "../components/dashboard/PerformanceOverview";
+import StatCard from "../components/dashboard/StatCard";
+
+export default function Dashboard() {
+  const [studySessions, setStudySessions] = useState([]);
+  const [quizAttempts, setQuizAttempts] = useState([]);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const [userData, sessionsData, attemptsData] = await Promise.all([
+        User.me(),
+        StudySession.list("-created_date", 20),
+        QuizAttempt.list("-created_date", 20),
+      ]);
+      
+      setUser(userData);
+      setStudySessions(sessionsData);
+      setQuizAttempts(attemptsData);
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getTodaysStats = () => {
+    const today = new Date().toDateString();
+    const todaySessions = studySessions.filter(session => 
+      new Date(session.created_date).toDateString() === today
+    );
+    const todayAttempts = quizAttempts.filter(attempt => 
+      new Date(attempt.created_date).toDateString() === today
+    );
+
+    return {
+      studyTime: todaySessions.reduce((sum, session) => sum + (session.duration_minutes || 0), 0),
+      testsCompleted: todayAttempts.length,
+      avgScore: todayAttempts.length > 0 
+        ? Math.round(todayAttempts.reduce((sum, attempt) => sum + attempt.score, 0) / todayAttempts.length)
+        : 0
+    };
+  };
+
+  const getStudyStreak = () => {
+    if (studySessions.length === 0) return 0;
+    const sessionDates = [...new Set(studySessions.map(s => format(new Date(s.created_date), 'yyyy-MM-dd')))];
+    sessionDates.sort().reverse();
+    
+    let streak = 0;
+    let today = new Date();
+
+    if (sessionDates.includes(format(today, 'yyyy-MM-dd'))) {
+      streak++;
+    } else {
+      today.setDate(today.getDate() - 1);
+      if (!sessionDates.includes(format(today, 'yyyy-MM-dd'))) return 0;
+    }
+
+    for (let i = 0; i < sessionDates.length; i++) {
+        const currentDate = new Date(sessionDates[i]);
+        const nextDate = new Date(sessionDates[i+1]);
+        if (sessionDates[i+1] && (currentDate.getTime() - nextDate.getTime()) / (1000 * 3600 * 24) === 1) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
+  };
+
+  const stats = getTodaysStats();
+  const studyStreak = getStudyStreak();
+
+  if (isLoading) {
+    return (
+      <div className="p-6 md:p-8 min-h-screen bg-soft-bg">
+        <div className="max-w-7xl mx-auto space-y-6 animate-pulse">
+            <div className="h-10 bg-slate-200 rounded w-1/3"></div>
+            <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-slate-200 rounded-2xl"></div>)}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 h-64 bg-slate-200 rounded-2xl"></div>
+                <div className="h-96 bg-slate-200 rounded-2xl"></div>
+            </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+      <div className="max-w-7xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl md:text-4xl font-bold text-text-primary mb-2">
+            Welcome back, {user?.full_name?.split(' ')[0] || 'Student'}!
+          </h1>
+          <p className="text-text-secondary text-lg">Let's continue your learning journey.</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
+            <StatCard icon={Clock} title="Study Time Today" value={`${stats.studyTime} min`} progress={Math.min(100, (stats.studyTime/120)*100)} color="blue" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+            <StatCard icon={Brain} title="Tests Today" value={stats.testsCompleted} progress={Math.min(100, (stats.testsCompleted/5)*100)} color="purple" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
+            <StatCard icon={Trophy} title="Average Score" value={`${stats.avgScore}%`} progress={stats.avgScore} color="teal" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}>
+            <StudyStreakCard streak={studyStreak} />
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+              <QuickActions />
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+              <PerformanceOverview attempts={quizAttempts} />
+            </motion.div>
+          </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+            <RecentActivity 
+              studySessions={studySessions.slice(0, 5)} 
+              quizAttempts={quizAttempts.slice(0, 5)} 
+            />
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
