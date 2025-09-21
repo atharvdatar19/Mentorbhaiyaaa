@@ -1,0 +1,251 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { GraduationCap, Briefcase, BookOpen, Search, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { InvokeLLM } from '@/integrations/Core';
+
+const streamInfoPrompt = (stream) => `
+Provide a comprehensive overview for the "${stream}" stream for a student in India. 
+Include the following sections:
+1.  **Top Career Paths**: List at least 5 major career paths. For each, give a brief description.
+2.  **Key Entrance Exams**: List the most important entrance exams for this stream (e.g., JEE for Science, CLAT for Arts/Commerce).
+3.  **Essential Skills**: What are the crucial skills a student should develop for success in this stream?
+4.  **Higher Education Degrees**: What are the common undergraduate and postgraduate degrees associated with this stream?
+`;
+
+const CareerExplorer = ({ stream }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState(null);
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        if (!searchTerm) return;
+        setIsSearching(true);
+        setSearchResults(null);
+        try {
+            const prompt = `A student interested in the "${stream}" stream is searching for careers related to "${searchTerm}". Provide a list of 3-5 relevant career options. For each career, provide a short description, typical required qualifications, and average starting salary range in India.`;
+            const results = await InvokeLLM({
+                prompt,
+                add_context_from_internet: true,
+                response_json_schema: {
+                    type: 'object',
+                    properties: {
+                        careers: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    name: { type: 'string' },
+                                    description: { type: 'string' },
+                                    qualifications: { type: 'string' },
+                                    salary_range: { type: 'string' }
+                                },
+                                required: ['name', 'description', 'qualifications', 'salary_range']
+                            }
+                        }
+                    },
+                    required: ['careers']
+                }
+            });
+            setSearchResults(results);
+        } catch(err) {
+            console.error("AI search failed:", err);
+            setSearchResults({error: "Could not fetch career data. Please try again."})
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    return (
+        <Card className="mt-8 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Search className="w-6 h-6 text-primary-blue" />
+                    Career Search Engine
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSearch} className="flex gap-2 mb-6">
+                    <Input 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        placeholder={`Search careers in ${stream}...`}
+                        className="h-11"
+                    />
+                    <Button type="submit" className="h-11 bg-primary-blue hover:bg-primary-blue-deep" disabled={isSearching}>
+                        {isSearching ? <Loader2 className="w-4 h-4 animate-spin"/> : "Search"}
+                    </Button>
+                </form>
+
+                {isSearching && <div className="text-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary-blue mx-auto"/></div>}
+
+                {searchResults?.careers && (
+                    <div className="space-y-4">
+                        {searchResults.careers.map(career => (
+                            <div key={career.name} className="p-4 border rounded-lg bg-slate-50/50">
+                                <h4 className="font-bold text-text-primary">{career.name}</h4>
+                                <p className="text-sm text-text-secondary mt-1">{career.description}</p>
+                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                    <Badge variant="outline">Qualifications: {career.qualifications}</Badge>
+                                    <Badge variant="outline">Salary: {career.salary_range}</Badge>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                 {searchResults?.error && <p className="text-red-500 text-center">{searchResults.error}</p>}
+            </CardContent>
+        </Card>
+    );
+};
+
+export default function StreamDetailsPage() {
+    const location = useLocation();
+    const params = new URLSearchParams(location.search);
+    const streamName = params.get('stream');
+    const [streamData, setStreamData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const fetchStreamData = useCallback(async () => {
+        if (!streamName) {
+            setError("No stream specified.");
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
+        setError(null); // Clear previous errors
+        try {
+            const results = await InvokeLLM({
+                prompt: streamInfoPrompt(streamName),
+                response_json_schema: {
+                    type: 'object',
+                    properties: {
+                        top_career_paths: { type: 'array', items: { type: 'object', properties: { path: {type: 'string'}, description: {type: 'string'} } } },
+                        key_entrance_exams: { type: 'array', items: { type: 'string' } },
+                        essential_skills: { type: 'array', items: { type: 'string' } },
+                        higher_education_degrees: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ["top_career_paths", "key_entrance_exams", "essential_skills", "higher_education_degrees"]
+                }
+            });
+            
+            // Validate the structure of the AI response
+            if (!results || !Array.isArray(results.top_career_paths) || 
+                !Array.isArray(results.key_entrance_exams) || 
+                !Array.isArray(results.essential_skills) || 
+                !Array.isArray(results.higher_education_degrees)) {
+                 throw new Error("Received invalid or incomplete data from AI.");
+            }
+            setStreamData(results);
+        } catch (err) {
+            console.error("Failed to load stream data:", err);
+            setError("Could not load details for this stream. The AI may be busy, please try again later.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [streamName]);
+
+    useEffect(() => {
+        fetchStreamData();
+    }, [fetchStreamData]);
+
+    if (isLoading) {
+        return (
+            <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+                <div className="max-w-5xl mx-auto animate-pulse">
+                    <div className="h-12 bg-slate-200 rounded w-1/3 mb-4"></div>
+                    <div className="h-8 bg-slate-200 rounded w-2/3 mb-10"></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <div className="h-56 bg-slate-200 rounded-lg"></div>
+                            <div className="h-40 bg-slate-200 rounded-lg"></div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="h-40 bg-slate-200 rounded-lg"></div>
+                            <div className="h-56 bg-slate-200 rounded-lg"></div>
+                        </div>
+                    </div>
+                    <div className="h-64 bg-slate-200 rounded-lg mt-8"></div>
+                </div>
+            </div>
+        );
+    }
+    
+    if (error) {
+        return <div className="p-8 text-center text-red-600 bg-red-50 rounded-lg max-w-md mx-auto mt-10">{error}</div>
+    }
+
+    if (!streamData) {
+        return <div className="p-8 text-center">No data available for this stream.</div>
+    }
+
+    return (
+        <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+            <div className="max-w-5xl mx-auto">
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+                    <h1 className="text-4xl md:text-5xl font-bold text-text-primary">{streamName} Stream</h1>
+                    <p className="text-xl text-text-secondary mt-2">Your complete guide to a successful career path.</p>
+                </motion.div>
+
+                <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-3"><Briefcase className="text-primary-blue"/>Top Career Paths</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {streamData.top_career_paths.map(item => (
+                                    <div key={item.path} className="text-sm">
+                                        <p className="font-bold">{item.path}</p>
+                                        <p className="text-text-secondary">{item.description}</p>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-3"><BookOpen className="text-primary-blue"/>Key Entrance Exams</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-wrap gap-2">
+                                {streamData.key_entrance_exams.map(exam => <Badge key={exam} variant="secondary">{exam}</Badge>)}
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-3"><GraduationCap className="text-primary-blue"/>Higher Education</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-wrap gap-2">
+                                {streamData.higher_education_degrees.map(degree => <Badge key={degree} variant="outline">{degree}</Badge>)}
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-3"><GraduationCap className="text-primary-blue"/>Essential Skills</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-wrap gap-2">
+                                {streamData.essential_skills.map(skill => <Badge key={skill} variant="outline">{skill}</Badge>)}
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                </div>
+                
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+                    <CareerExplorer stream={streamName} />
+                </motion.div>
+            </div>
+        </div>
+    );
+}
