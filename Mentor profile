@@ -1,1 +1,144 @@
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Mentor, Booking, User } from '@/entities/all';
+import { motion } from 'framer-motion';
+import { Award, Star, Mail, Briefcase, GraduationCap, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+function BookingForm({ mentor, onBookingSuccess }) {
+    const [topic, setTopic] = useState('');
+    const [dateTime, setDateTime] = useState('');
+    const [duration, setDuration] = useState(30);
+    const [currentUser, setCurrentUser] = useState(null);
+
+    useEffect(() => {
+        User.me().then(setCurrentUser).catch(() => {});
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!currentUser) {
+            alert("You must be logged in to book a session.");
+            return;
+        }
+        try {
+            await Booking.create({
+                mentor_id: mentor.id,
+                mentor_name: mentor.name,
+                mentor_email: mentor.email,
+                student_name: currentUser.full_name,
+                requested_datetime: new Date(dateTime).toISOString(),
+                duration_minutes: Number(duration),
+                topic,
+            });
+            onBookingSuccess();
+        } catch (error) {
+            console.error("Booking failed:", error);
+            alert("Could not book session. Please try again.");
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 p-4">
+            <Input placeholder="Topic of discussion" value={topic} onChange={e => setTopic(e.target.value)} required />
+            <Input type="datetime-local" value={dateTime} onChange={e => setDateTime(e.target.value)} required />
+            <Select onValueChange={setDuration} defaultValue={duration}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={30}>30 minutes</SelectItem>
+                    <SelectItem value={45}>45 minutes</SelectItem>
+                    <SelectItem value={60}>60 minutes</SelectItem>
+                </SelectContent>
+            </Select>
+            <Button type="submit" className="w-full bg-primary-blue hover:bg-primary-blue-deep" disabled={!currentUser}>
+                {currentUser ? "Request Session" : "Login to Book"}
+            </Button>
+        </form>
+    );
+}
+
+
+export default function MentorProfilePage() {
+    const [mentor, setMentor] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isBookingOpen, setIsBookingOpen] = useState(false);
+    const location = useLocation();
+    const mentorId = new URLSearchParams(location.search).get('id');
+
+    useEffect(() => {
+        if (mentorId) {
+            Mentor.get(mentorId)
+                .then(setMentor)
+                .catch(err => console.error("Failed to load mentor", err))
+                .finally(() => setIsLoading(false));
+        }
+    }, [mentorId]);
+
+    if (isLoading) return <div className="p-8">Loading mentor profile...</div>;
+    if (!mentor) return <div className="p-8">Mentor not found.</div>;
+
+    return (
+        <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+            <div className="max-w-4xl mx-auto">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                    <Card className="shadow-xl border-0 overflow-hidden">
+                        <div className="bg-slate-50 p-8 flex flex-col md:flex-row items-center gap-8">
+                            <img src={mentor.profile_picture_url || 'https://i.pravatar.cc/150'} alt={mentor.name} className="w-32 h-32 rounded-full border-4 border-white shadow-lg" />
+                            <div className="text-center md:text-left">
+                                <h1 className="text-3xl font-bold text-text-primary">{mentor.name}</h1>
+                                <p className="text-lg text-primary-blue font-semibold">{mentor.headline}</p>
+                                <div className="flex items-center justify-center md:justify-start gap-1 mt-2 text-amber-500">
+                                    {[...Array(5)].map((_, i) => <Star key={i} fill="currentColor" className={`w-5 h-5 ${i < mentor.rating ? '' : 'text-slate-300'}`} />)}
+                                    <span className="text-text-secondary ml-2">({mentor.rating})</span>
+                                </div>
+                            </div>
+                            <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className="md:ml-auto bg-primary-blue hover:bg-primary-blue-deep gap-2"><Calendar className="w-4 h-4"/> Book a Session</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader><DialogTitle>Book a Session with {mentor.name}</DialogTitle></DialogHeader>
+                                    <BookingForm mentor={mentor} onBookingSuccess={() => setIsBookingOpen(false)} />
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="md:col-span-2">
+                                <h3 className="text-xl font-bold mb-4 text-text-primary">About Me</h3>
+                                <p className="text-text-secondary whitespace-pre-wrap">{mentor.bio}</p>
+                                <h3 className="text-xl font-bold mt-8 mb-4 text-text-primary">Achievements</h3>
+                                <ul className="list-disc list-inside text-text-secondary space-y-1">
+                                    {mentor.achievements?.map((ach, i) => <li key={i}>{ach}</li>)}
+                                </ul>
+                            </div>
+                            <div className="space-y-4">
+                                <InfoItem icon={Briefcase} label="Experience" value={`${mentor.experience_years} years`} />
+                                <InfoItem icon={GraduationCap} label="Alma Mater" value={mentor.alma_mater} />
+                                <InfoItem icon={Mail} label="Email" value={mentor.email} />
+                                <div>
+                                    <h4 className="font-semibold text-text-primary mb-2">Expertise</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {mentor.expertise.map(exp => <Badge key={exp} variant="secondary">{exp}</Badge>)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </motion.div>
+            </div>
+        </div>
+    );
+}
+
+const InfoItem = ({ icon: Icon, label, value }) => (
+    <div>
+        <h4 className="font-semibold text-text-primary flex items-center gap-2"><Icon className="w-4 h-4 text-primary-blue"/>{label}</h4>
+        <p className="text-text-secondary ml-6">{value}</p>
+    </div>
+);
