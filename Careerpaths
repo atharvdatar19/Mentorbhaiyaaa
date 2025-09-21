@@ -1,1 +1,201 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { CareerPath, CareerProfile } from "@/entities/all";
+import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+    Briefcase, 
+    TrendingUp, 
+    GraduationCap, 
+    DollarSign, 
+    Search,
+    Star,
+    ArrowRight 
+} from "lucide-react";
+
+export default function CareerPathsPage() {
+  const [careerPaths, setCareerPaths] = useState([]);
+  const [filteredPaths, setFilteredPaths] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIndustry, setSelectedIndustry] = useState("All");
+  const [isLoading, setIsLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState(null);
+
+  const filterPaths = useCallback(() => {
+    let filtered = careerPaths;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(path => 
+        path.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        path.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (selectedIndustry !== "All") {
+      filtered = filtered.filter(path => path.industry === selectedIndustry);
+    }
+    
+    setFilteredPaths(filtered);
+  }, [careerPaths, searchTerm, selectedIndustry]); // Dependencies for useCallback
+
+  useEffect(() => {
+    loadCareerPaths();
+    loadUserProfile();
+  }, []);
+
+  useEffect(() => {
+    filterPaths(); // Now filterPaths is stable because of useCallback
+  }, [filterPaths]); // Depend only on filterPaths
+
+  const loadCareerPaths = async () => {
+    try {
+      const data = await CareerPath.list();
+      setCareerPaths(data);
+    } catch (error) {
+      console.error("Error loading career paths:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadUserProfile = async () => {
+    try {
+      const profiles = await CareerProfile.list("-created_date", 1);
+      if (profiles.length > 0) {
+        setUserProfile(profiles[0]);
+      }
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+    }
+  };
+
+  const industries = ["All", ...new Set(careerPaths.map(path => path.industry))];
+
+  const getCompatibilityScore = (path) => {
+    if (!userProfile || !userProfile.interests) return null;
+    
+    const matchingInterests = path.interests_match?.filter(interest => 
+      userProfile.interests.includes(interest)
+    ).length || 0;
+    
+    return Math.min(100, (matchingInterests / (path.interests_match?.length || 1)) * 100);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-pulse">Loading Career Paths...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+      <div className="max-w-7xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Briefcase className="w-8 h-8 text-primary-blue"/>
+            <h1 className="text-3xl md:text-4xl font-bold text-text-primary">Explore Career Paths</h1>
+          </div>
+          <p className="text-text-secondary text-lg">
+            Discover diverse career opportunities and find the perfect match for your interests and goals.
+          </p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-white/60 backdrop-blur-lg rounded-2xl shadow-sm border border-slate-200/80">
+            <div className="relative md:col-span-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input
+                placeholder="Search career paths (e.g., 'Software Engineer', 'Doctor')"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-11"
+              />
+            </div>
+            <div className="flex gap-1 overflow-x-auto">
+              {industries.slice(0, 5).map(industry => (
+                <button
+                  key={industry}
+                  onClick={() => setSelectedIndustry(industry)}
+                  className={`flex-shrink-0 transition-all duration-300 px-3 py-2 rounded-lg text-sm font-semibold ${
+                    selectedIndustry === industry 
+                      ? "bg-primary-blue text-white shadow-sm" 
+                      : "bg-slate-100 text-text-secondary hover:bg-slate-200"
+                  }`}
+                >
+                  {industry}
+                </button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPaths.map((path, index) => {
+            const compatibilityScore = getCompatibilityScore(path);
+            
+            return (
+              <motion.div
+                key={path.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 * index }}
+              >
+                <Card className="h-full shadow-lg border-0 bg-white/60 backdrop-blur-lg hover:shadow-xl transition-all duration-300 group">
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-2">
+                      <CardTitle className="text-xl font-bold text-text-primary">{path.title}</CardTitle>
+                      {compatibilityScore && (
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-amber-400 fill-current" />
+                          <span className="text-xs font-bold text-amber-600">{Math.round(compatibilityScore)}% match</span>
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant="secondary" className="w-fit">{path.industry}</Badge>
+                    <p className="text-sm text-text-secondary mt-2">{path.description}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <span className="text-text-secondary">
+                          ₹{path.salary_range?.min/100000}L - ₹{path.salary_range?.max/100000}L
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                        <span className="text-text-secondary">Growing</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-text-primary mb-2">Key Skills</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {path.key_skills?.slice(0, 3).map(skill => (
+                          <Badge key={skill} variant="outline" className="text-xs">{skill}</Badge>
+                        ))}
+                        {path.key_skills?.length > 3 && (
+                          <Badge variant="outline" className="text-xs">+{path.key_skills.length - 3} more</Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <Button className="w-full justify-between items-center bg-primary-blue hover:bg-primary-blue-deep">
+                      Learn More
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
