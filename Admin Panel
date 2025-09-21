@@ -1,0 +1,265 @@
+import React, { useState, useEffect } from 'react';
+import { User, Timeline, StudyMaterial, Mentor, Subject, Quiz, College } from '@/entities/all';
+import { InvokeLLM, UploadPrivateFile } from '@/integrations/Core';
+import { motion } from 'framer-motion';
+import { ShieldCheck, Users, Calendar, BookOpen, UserPlus, RefreshCw, Upload, Plus, AlertCircle, Building, Brain } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+function UserManagement() {
+    const [users, setUsers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => { loadUsers() }, []);
+    const loadUsers = async () => {
+        try {
+            const usersData = await User.list();
+            setUsers(usersData);
+        } catch (error) { console.error("Failed to load users:", error) }
+        finally { setIsLoading(false) }
+    };
+    const handleRoleChange = async (userId, newRole) => {
+        try {
+            await User.update(userId, { role: newRole });
+            loadUsers();
+        } catch (error) {
+            console.error(`Failed to update role:`, error);
+            alert("Error updating role. This is likely a premium feature. Please check your subscription or contact support.");
+        }
+    };
+    if (isLoading) return <div>Loading users...</div>;
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-bold">User Role Management</h3>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Premium Feature</AlertTitle>
+              <AlertDescription>Managing user roles requires a paid subscription. This feature may not work on the free plan.</AlertDescription>
+            </Alert>
+            <div className="space-y-3">
+                {users.map(user => (
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                        <div>
+                            <p className="font-bold">{user.full_name}</p>
+                            <p className="text-sm text-slate-600">{user.email}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role || 'user'}</Badge>
+                            <Select value={user.role || 'user'} onValueChange={(newRole) => handleRoleChange(user.id, newRole)}>
+                                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function CollegeSync() {
+    const [isSyncing, setIsSyncing] = useState(false);
+    const syncCollegeData = async () => {
+        setIsSyncing(true);
+        try {
+            const result = await InvokeLLM({
+                prompt: `Fetch a list of 20-30 prominent colleges in India across various streams (Engineering, Medical, Arts, Commerce). For each college, provide its name, type (government or private), city, state, and a list of 3-5 popular programs offered with their stream (e.g., B.Tech in Engineering).`,
+                add_context_from_internet: true,
+                response_json_schema: { type: "object", properties: { colleges: { type: "array", items: { type: "object", properties: { name: { type: "string" }, type: { type: "string", enum: ["government", "private", "autonomous"] }, location: { type: "object", properties: { city: { type: "string" }, state: { type: "string" } } }, programs_offered: { type: "array", items: { type: "object", properties: { degree: { type: "string" }, stream: { type: "string" } } } }, established_year: { type: "number" } } } } } }
+            });
+            await College.bulkCreate(result.colleges.map(c => ({...c, facilities: {}})));
+            alert(`Successfully synced ${result.colleges.length} colleges!`);
+        } catch (error) { console.error("College sync failed:", error); alert("Failed to sync college data. Please try again.") }
+        finally { setIsSyncing(false) }
+    };
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-bold">College Data Sync</h3>
+            <div className="p-4 bg-green-50 rounded-lg">
+                <p className="text-sm mb-3">Sync the college directory with real-time data from the web.</p>
+                <Button onClick={syncCollegeData} disabled={isSyncing} className="gap-2 bg-green-600 hover:bg-green-700">
+                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing Colleges...' : 'Sync College Data'}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function TimelineSync() {
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastSync, setLastSync] = useState(null);
+    const syncTimelineData = async () => {
+        setIsSyncing(true);
+        try {
+            const result = await InvokeLLM({
+                prompt: `Get current admission dates, scholarship deadlines, and entrance exam dates for Indian students (Class 10, 11, 12, and graduation level) for the next 12 months. Include JEE, NEET, CLAT, state entrance exams, and scholarship opportunities.`,
+                add_context_from_internet: true,
+                response_json_schema: { type: "object", properties: { events: { type: "array", items: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, event_type: { type: "string", enum: ["admission", "scholarship", "entrance_exam", "counseling", "application_deadline", "result"] }, start_date: { type: "string", format: "date" }, end_date: { type: "string", format: "date" }, target_audience: { type: "array", items: { type: "string" } }, streams: { type: "array", items: { type: "string" } } } } } } }
+            });
+            await Timeline.bulkCreate(result.events);
+            setLastSync(new Date().toLocaleString());
+            alert(`Successfully synced ${result.events.length} timeline events!`);
+        } catch (error) { console.error("Timeline sync failed:", error); alert("Failed to sync timeline data. Please try again.") }
+        finally { setIsSyncing(false) }
+    };
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-bold">Timeline Data Sync</h3>
+            <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm mb-3">Sync real-time admission dates and exam schedules from official sources.</p>
+                {lastSync && <p className="text-xs text-slate-600 mb-3">Last synced: {lastSync}</p>}
+                <Button onClick={syncTimelineData} disabled={isSyncing} className="gap-2">
+                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing...' : 'Sync Timeline Data'}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function QuizManagement() {
+    const [quizzes, setQuizzes] = useState([]);
+    useEffect(() => { loadQuizzes() }, []);
+    const loadQuizzes = async () => {
+        const data = await Quiz.list();
+        setQuizzes(data);
+    }
+    // QuizForm would be a complex sub-component. For now, just listing.
+    return (
+        <div>
+            <h3 className="text-lg font-bold mb-4">Quiz Management</h3>
+            {/* Quiz creation form would go here */}
+            <p className="text-sm text-slate-500">Quiz creation UI is complex and will be added in a future update. You can add quizzes via the Data tab.</p>
+        </div>
+    )
+}
+
+function StudyMaterialManagement() {
+    const [subjects, setSubjects] = useState([]);
+    const [materials, setMaterials] = useState([]);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    useEffect(() => {
+        const loadData = async () => {
+            setSubjects(await Subject.list());
+            setMaterials(await StudyMaterial.list());
+        }
+        loadData();
+    }, []);
+    const handleSuccess = () => {
+        StudyMaterial.list().then(setMaterials);
+        setIsFormOpen(false);
+    }
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Study Material Management</h3>
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm" className="gap-2"><Plus/>Add Material</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Add New Study Material</DialogTitle></DialogHeader>
+                        <AddMaterialForm subjects={subjects} onSuccess={handleSuccess} />
+                    </DialogContent>
+                </Dialog>
+            </div>
+            <div className="space-y-2">
+                {materials.map(m => (
+                    <div key={m.id} className="p-3 bg-slate-50 rounded-lg text-sm">
+                        <p className="font-bold">{m.title}</p>
+                        <p className="text-xs text-slate-600">Type: {m.type} | Subject: {subjects.find(s => s.id === m.subject_id)?.name}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function AddMaterialForm({ subjects, onSuccess }) {
+    const [type, setType] = useState('PDF');
+    const [file, setFile] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [formData, setFormData] = useState({ subject_id: '', title: '', description: '', external_url: '' });
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsUploading(true);
+        try {
+            let payload = { ...formData, type };
+            if (type === 'PDF' && file) {
+                const { file_uri } = await UploadPrivateFile({ file });
+                payload.file_uri = file_uri;
+            }
+            await StudyMaterial.create(payload);
+            alert('Material added successfully!');
+            onSuccess();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to add material');
+        } finally {
+            setIsUploading(false);
+        }
+    }
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <Select onValueChange={(v) => setFormData({...formData, subject_id: v})} required>
+                <SelectTrigger><SelectValue placeholder="Select Subject"/></SelectTrigger>
+                <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Input placeholder="Title" onChange={e => setFormData({...formData, title: e.target.value})} required/>
+            <Textarea placeholder="Description" onChange={e => setFormData({...formData, description: e.target.value})}/>
+            <Select onValueChange={setType} value={type}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent><SelectItem value="PDF">PDF</SelectItem><SelectItem value="Video">Video</SelectItem><SelectItem value="Article">Article</SelectItem></SelectContent>
+            </Select>
+            {type === 'PDF' ? (
+                <Input type="file" onChange={e => setFile(e.target.files[0])} required/>
+            ) : (
+                <Input placeholder="Enter URL (e.g., YouTube, Blog)" onChange={e => setFormData({...formData, external_url: e.target.value})} required/>
+            )}
+            <Button type="submit" disabled={isUploading} className="w-full">{isUploading ? 'Uploading...' : 'Add Material'}</Button>
+        </form>
+    )
+}
+
+export default function AdminPanel() {
+    return (
+        <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+            <div className="max-w-6xl mx-auto">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <ShieldCheck className="w-8 h-8 text-primary-blue"/>
+                        <h1 className="text-3xl md:text-4xl font-bold text-text-primary">Admin Panel</h1>
+                    </div>
+                    <p className="text-text-secondary text-lg">Manage users, content, and data synchronization.</p>
+                </motion.div>
+
+                <Tabs defaultValue="users" className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-5">
+                        <TabsTrigger value="users"><Users className="w-4 h-4 mr-2"/>Users</TabsTrigger>
+                        <TabsTrigger value="timeline"><Calendar className="w-4 h-4 mr-2"/>Timeline</TabsTrigger>
+                        <TabsTrigger value="colleges"><Building className="w-4 h-4 mr-2"/>Colleges</TabsTrigger>
+                        <TabsTrigger value="materials"><BookOpen className="w-4 h-4 mr-2"/>Materials</TabsTrigger>
+                        <TabsTrigger value="quizzes"><Brain className="w-4 h-4 mr-2"/>Quizzes</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="users"><Card><CardContent className="p-6"><UserManagement /></CardContent></Card></TabsContent>
+                    <TabsContent value="timeline"><Card><CardContent className="p-6"><TimelineSync /></CardContent></Card></TabsContent>
+                    <TabsContent value="colleges"><Card><CardContent className="p-6"><CollegeSync /></CardContent></Card></TabsContent>
+                    <TabsContent value="materials"><Card><CardContent className="p-6"><StudyMaterialManagement /></CardContent></Card></TabsContent>
+                    <TabsContent value="quizzes"><Card><CardContent className="p-6"><QuizManagement /></CardContent></Card></TabsContent>
+                </Tabs>
+            </div>
+        </div>
+    );
+}
