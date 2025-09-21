@@ -1,0 +1,66 @@
+{
+  "name": "PlannerEvent",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "start_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "study",
+        "test",
+        "deadline",
+        "personal",
+        "mentoring"
+      ]
+    },
+    "is_completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "related_entity_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "start_time",
+    "end_time",
+    "category"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

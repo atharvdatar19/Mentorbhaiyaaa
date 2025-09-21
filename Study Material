@@ -1,0 +1,44 @@
+{
+  "name": "StudyMaterial",
+  "type": "object",
+  "properties": {
+    "subject_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "PDF",
+        "Video",
+        "Article"
+      ]
+    },
+    "file_uri": {
+      "type": "string",
+      "description": "URI for private files (PDFs)"
+    },
+    "external_url": {
+      "type": "string",
+      "description": "URL for videos or articles"
+    }
+  },
+  "required": [
+    "subject_id",
+    "title",
+    "type"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "StudySession",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "type": "string",
+      "description": "Subject studied"
+    },
+    "exam_type": {
+      "type": "string",
+      "enum": [
+        "JEE",
+        "NEET",
+        "NDA",
+        "Class_10",
+        "Class_12",
+        "CLAT",
+        "VITEEE",
+        "MHTCET",
+        "GUJCET",
+        "Common"
+      ]
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "How long the study session was"
+    },
+    "session_type": {
+      "type": "string",
+      "enum": [
+        "Reading",
+        "Practice",
+        "Revision",
+        "Mock_Test"
+      ],
+      "default": "Reading"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Session notes or reflections"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Self-rated effectiveness of session"
+    }
+  },
+  "required": [
+    "subject",
+    "exam_type",
+    "duration_minutes"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

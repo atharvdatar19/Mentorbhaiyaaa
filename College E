@@ -1,0 +1,142 @@
+{
+  "name": "College",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "government",
+        "private",
+        "autonomous"
+      ]
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "district": {
+          "type": "string"
+        },
+        "pincode": {
+          "type": "string"
+        },
+        "coordinates": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "programs_offered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "degree": {
+            "type": "string"
+          },
+          "stream": {
+            "type": "string",
+            "enum": [
+              "Arts",
+              "Science",
+              "Commerce",
+              "Vocational",
+              "Engineering",
+              "Medical"
+            ]
+          },
+          "duration_years": {
+            "type": "number"
+          },
+          "seats": {
+            "type": "number"
+          },
+          "cutoff_percentage": {
+            "type": "number"
+          },
+          "fees_per_year": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "facilities": {
+      "type": "object",
+      "properties": {
+        "hostel": {
+          "type": "boolean"
+        },
+        "library": {
+          "type": "boolean"
+        },
+        "lab": {
+          "type": "boolean"
+        },
+        "internet": {
+          "type": "boolean"
+        },
+        "sports": {
+          "type": "boolean"
+        },
+        "canteen": {
+          "type": "boolean"
+        }
+      }
+    },
+    "medium_of_instruction": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "affiliation": {
+      "type": "string"
+    },
+    "contact_info": {
+      "type": "object",
+      "properties": {
+        "phone": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        }
+      }
+    },
+    "established_year": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "location",
+    "programs_offered"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "name": "CareerPath",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "industry": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "required_education": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "key_skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "salary_range": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "default": "INR"
+        }
+      }
+    },
+    "growth_prospects": {
+      "type": "string"
+    },
+    "recommended_courses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "typical_progression": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "personality_fit": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "interests_match": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "industry",
+    "description"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

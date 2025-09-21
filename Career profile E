@@ -1,0 +1,105 @@
+{
+  "name": "CareerProfile",
+  "type": "object",
+  "properties": {
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "personality_type": {
+      "type": "string"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "values": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "career_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "preferred_industries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "education_level": {
+      "type": "string",
+      "enum": [
+        "high_school",
+        "undergraduate",
+        "graduate",
+        "postgraduate"
+      ]
+    },
+    "current_phase": {
+      "type": "string",
+      "enum": [
+        "exploration",
+        "preparation",
+        "application",
+        "transition",
+        "advancement"
+      ]
+    },
+    "assessment_scores": {
+      "type": "object",
+      "properties": {
+        "interests": {
+          "type": "object"
+        },
+        "personality": {
+          "type": "object"
+        },
+        "skills": {
+          "type": "object"
+        },
+        "values": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "required": [
+    "education_level",
+    "current_phase"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "Subject",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Subject name (Physics, Chemistry, Math, etc.)"
+    },
+    "exam_type": {
+      "type": "string",
+      "enum": [
+        "JEE",
+        "NEET",
+        "NDA",
+        "Class_10",
+        "Class_12",
+        "CLAT",
+        "VITEEE",
+        "MHTCET",
+        "GUJCET",
+        "Common"
+      ],
+      "description": "Which exam this subject is for"
+    },
+    "color": {
+      "type": "string",
+      "description": "Color code for the subject"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Icon name for the subject"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the subject"
+    }
+  },
+  "required": [
+    "name",
+    "exam_type"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "name": "Booking",
+  "type": "object",
+  "properties": {
+    "mentor_id": {
+      "type": "string"
+    },
+    "mentor_name": {
+      "type": "string"
+    },
+    "mentor_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "requested_datetime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "enum": [
+        30,
+        45,
+        60
+      ]
+    },
+    "topic": {
+      "type": "string",
+      "description": "Topic to discuss"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Confirmed",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    }
+  },
+  "required": [
+    "mentor_id",
+    "mentor_name",
+    "mentor_email",
+    "student_name",
+    "requested_datetime",
+    "duration_minutes",
+    "topic"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "mentor_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "mentor_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

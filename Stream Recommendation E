@@ -1,0 +1,93 @@
+{
+  "name": "StreamRecommendation",
+  "type": "object",
+  "properties": {
+    "stream": {
+      "type": "string",
+      "enum": [
+        "Arts",
+        "Science",
+        "Commerce",
+        "Vocational"
+      ]
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "personality_traits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "interest_areas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "career_opportunities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "higher_education_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "government_jobs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "private_jobs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "entrepreneurship_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "average_salary_range": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      }
+    },
+    "skills_developed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "stream",
+    "subjects",
+    "career_opportunities"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
