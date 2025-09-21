@@ -1,0 +1,95 @@
+{
+  "name": "QuizAttempt",
+  "type": "object",
+  "properties": {
+    "quiz_id": {
+      "type": "string",
+      "description": "ID of the quiz attempted"
+    },
+    "score": {
+      "type": "number",
+      "description": "Score achieved"
+    },
+    "total_questions": {
+      "type": "number"
+    },
+    "correct_answers": {
+      "type": "number"
+    },
+    "time_taken_minutes": {
+      "type": "number"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "exam_type": {
+      "type": "string",
+      "enum": [
+        "JEE",
+        "NEET",
+        "NDA",
+        "Class_10",
+        "Class_12",
+        "CLAT",
+        "VITEEE",
+        "MHTCET",
+        "GUJCET",
+        "Common"
+      ]
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question_index": {
+            "type": "number"
+          },
+          "selected_answer": {
+            "type": "number"
+          },
+          "is_correct": {
+            "type": "boolean"
+          },
+          "time_spent_seconds": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "quiz_id",
+    "score",
+    "total_questions",
+    "correct_answers",
+    "subject",
+    "exam_type"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
