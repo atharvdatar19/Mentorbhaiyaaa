@@ -1,0 +1,136 @@
+import React, { useState, useEffect } from 'react';
+import { Booking } from '@/entities/Booking';
+import { User } from '@/entities/User';
+import { motion } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Calendar, UserCheck, Clock, Plus, Bookmark } from 'lucide-react';
+import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+
+const statusStyles = {
+  Pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  Confirmed: 'bg-green-100 text-green-800 border-green-200',
+  Completed: 'bg-blue-100 text-blue-800 border-blue-200',
+  Cancelled: 'bg-red-100 text-red-800 border-red-200',
+};
+
+export default function MyBookingsPage() {
+  const [bookings, setBookings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const currentUser = await User.me();
+        setUser(currentUser);
+        const userBookings = await Booking.list();
+        setBookings(userBookings);
+      } catch (error) {
+        console.error('Failed to load bookings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const handleStatusChange = async (bookingId, newStatus) => {
+    try {
+      await Booking.update(bookingId, { status: newStatus });
+      const updatedBookings = bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b);
+      setBookings(updatedBookings);
+    } catch (error) {
+      console.error('Failed to update booking status:', error);
+      alert('Could not update status. Please try again.');
+    }
+  };
+
+  const isMentor = user?.role === 'mentor' || bookings.some(b => b.mentor_email === user?.email);
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8 min-h-screen bg-soft-bg animate-pulse">
+        <div className="max-w-4xl mx-auto">
+          <div className="h-10 bg-slate-200 rounded w-1/3 mb-8"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-slate-200 rounded-2xl"></div>)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+      <div className="max-w-4xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-between items-center mb-8">
+            <div>
+                <div className="flex items-center gap-3 mb-2">
+                    <Bookmark className="w-8 h-8 text-primary-blue"/>
+                    <h1 className="text-3xl md:text-4xl font-bold text-text-primary">My Bookings</h1>
+                </div>
+                <p className="text-text-secondary text-lg">Review and manage your mentorship sessions.</p>
+            </div>
+            <Button asChild className="gap-2 bg-primary-blue hover:bg-primary-blue-deep">
+                <Link to={createPageUrl("Mentors")}>
+                    <Plus className="w-4 h-4" /> Book a Session
+                </Link>
+            </Button>
+        </motion.div>
+
+        {bookings.length === 0 ? (
+          <div className="text-center py-16 bg-white/60 rounded-2xl">
+            <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+            <h3 className="text-xl font-semibold text-text-primary">No Bookings Yet</h3>
+            <p className="text-text-secondary">When you book a session with a mentor, it will appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {bookings.map((booking) => (
+              <motion.div key={booking.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <Card className="shadow-lg border-0 bg-white/60 backdrop-blur-lg">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg font-bold text-text-primary">{booking.topic}</CardTitle>
+                      <Badge className={statusStyles[booking.status]}>{booking.status}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-text-secondary pt-1">
+                      <UserCheck className="w-4 h-4" />
+                      <span>{isMentor ? `With: ${booking.student_name}`: `Mentor: ${booking.mentor_name}`}</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                      <Calendar className="w-4 h-4" />
+                      <span>{format(new Date(booking.requested_datetime), 'PPPP')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-text-secondary mt-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{format(new Date(booking.requested_datetime), 'p')} ({booking.duration_minutes} min)</span>
+                    </div>
+                  </CardContent>
+                  {isMentor && booking.status === 'Pending' && (
+                    <CardFooter className="flex justify-end gap-2 p-4 bg-slate-50/50 border-t">
+                      <Button size="sm" variant="destructive" onClick={() => handleStatusChange(booking.id, 'Cancelled')}>Decline</Button>
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleStatusChange(booking.id, 'Confirmed')}>Confirm</Button>
+                    </CardFooter>
+                  )}
+                  {isMentor && booking.status === 'Confirmed' && (
+                    <CardFooter className="flex justify-end gap-2 p-4 bg-slate-50/50 border-t">
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => handleStatusChange(booking.id, 'Completed')}>Mark as Completed</Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
