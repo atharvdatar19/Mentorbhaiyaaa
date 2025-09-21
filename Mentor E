@@ -1,0 +1,124 @@
+{
+  "name": "Mentor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "profile_picture_url": {
+      "type": "string"
+    },
+    "headline": {
+      "type": "string"
+    },
+    "expertise": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "industries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "career_stage": {
+      "type": "string",
+      "enum": [
+        "entry_level",
+        "mid_level",
+        "senior_level",
+        "executive",
+        "entrepreneur"
+      ]
+    },
+    "mentoring_specialties": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "career_guidance",
+          "skill_development",
+          "interview_prep",
+          "resume_review",
+          "industry_insights",
+          "academic_support",
+          "entrepreneurship"
+        ]
+      }
+    },
+    "experience_years": {
+      "type": "number"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "bio": {
+      "type": "string"
+    },
+    "current_company": {
+      "type": "string"
+    },
+    "previous_companies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "alma_mater": {
+      "type": "string"
+    },
+    "achievements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "session_rate_per_hour": {
+      "type": "number"
+    },
+    "availability": {
+      "type": "object",
+      "properties": {
+        "timezone": {
+          "type": "string"
+        },
+        "preferred_days": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preferred_times": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "name",
+    "email",
+    "headline",
+    "expertise",
+    "industries",
+    "mentoring_specialties"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
