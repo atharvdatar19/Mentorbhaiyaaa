@@ -1,0 +1,100 @@
+import React, { useState, useEffect } from 'react';
+import { User } from '@/entities/User';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
+const classes = ["Class_9", "Class_10", "Class_11", "Class_12", "Graduate", "Postgraduate"];
+
+export default function SettingsModal({ user, onUserUpdate }) {
+    const [profile, setProfile] = useState({
+        full_name: '',
+        current_class: '',
+        notifications_enabled: true,
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setProfile({
+                full_name: user.full_name || '',
+                current_class: user.current_class || '',
+                notifications_enabled: user.notifications_enabled !== false,
+            });
+        }
+    }, [user]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const updatedData = await User.updateMyUserData({
+                full_name: profile.full_name,
+                current_class: profile.current_class,
+                notifications_enabled: profile.notifications_enabled,
+            });
+            onUserUpdate(updatedData);
+            alert('Profile updated successfully!');
+        } catch (error) {
+            console.error('Failed to update profile:', error);
+            alert('An error occurred. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!user) {
+        return <div>Loading profile...</div>;
+    }
+
+    return (
+        <div>
+            <DialogHeader>
+                <DialogTitle>My Profile</DialogTitle>
+                <DialogDescription>
+                    Manage your account settings and preferences.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-6">
+                <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input 
+                        id="fullName" 
+                        value={profile.full_name} 
+                        onChange={(e) => setProfile(p => ({ ...p, full_name: e.target.value }))}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="currentClass">Current Class/Level</Label>
+                     <Select 
+                        value={profile.current_class}
+                        onValueChange={(value) => setProfile(p => ({ ...p, current_class: value }))}
+                    >
+                        <SelectTrigger id="currentClass"><SelectValue placeholder="Select your class" /></SelectTrigger>
+                        <SelectContent>
+                            {classes.map(c => <SelectItem key={c} value={c}>{c.replace('_', ' ')}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                        <Label htmlFor="dnd" className="font-semibold">Do Not Disturb</Label>
+                        <p className="text-xs text-text-secondary">Disable all non-essential notifications.</p>
+                    </div>
+                    <Switch
+                        id="dnd"
+                        checked={!profile.notifications_enabled}
+                        onCheckedChange={(checked) => setProfile(p => ({ ...p, notifications_enabled: !checked }))}
+                    />
+                </div>
+            </div>
+            <div className="flex justify-end">
+                <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+            </div>
+        </div>
+    );
+}
