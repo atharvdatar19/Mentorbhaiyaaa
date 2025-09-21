@@ -1,1 +1,187 @@
+import React, { useState, useEffect } from "react";
+import { Doubt } from "@/entities/Doubt";
+import { User } from "@/entities/User";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquare, ThumbsUp, PlusCircle } from "lucide-react";
+import { formatDistanceToNow } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const examTypes = ["JEE", "NEET", "NDA", "Class_10", "Class_12", "CLAT", "VITEEE", "MHTCET", "GUJCET", "Common"];
+const subjects = ["Physics", "Chemistry", "Mathematics", "Biology", "English", "General Knowledge", "Other"];
+
+function AskDoubtForm({ onDoubtPosted }) {
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [subject, setSubject] = useState("");
+    const [examType, setExamType] = useState("");
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try { setUser(await User.me()) } catch(e){}
+        }
+        fetchUser();
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!title || !description || !subject || !examType || !user) {
+            alert("Please fill all fields to post your doubt.");
+            return;
+        }
+        try {
+            await Doubt.create({
+                title,
+                description,
+                subject,
+                exam_type: examType,
+                asked_by_name: user.full_name
+            });
+            onDoubtPosted();
+            setTitle(""); setDescription(""); setSubject(""); setExamType("");
+        } catch (error) {
+            console.error("Failed to post doubt:", error);
+            alert("An error occurred while posting your doubt.");
+        }
+    };
+    
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <Input placeholder="Doubt title (e.g., 'Problem with Newton's Third Law')" value={title} onChange={e => setTitle(e.target.value)} required />
+            <Textarea placeholder="Describe your doubt in detail..." value={description} onChange={e => setDescription(e.target.value)} required />
+            <div className="grid grid-cols-2 gap-4">
+                <Select onValueChange={setSubject} value={subject} required>
+                    <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
+                    <SelectContent>{subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select onValueChange={setExamType} value={examType} required>
+                    <SelectTrigger><SelectValue placeholder="Select Exam" /></SelectTrigger>
+                    <SelectContent>{examTypes.map(e => <SelectItem key={e} value={e}>{e.replace('_', ' ')}</SelectItem>)}</SelectContent>
+                </Select>
+            </div>
+            <Button type="submit" className="w-full bg-primary-blue hover:bg-primary-blue-deep" disabled={!user}>
+                {user ? 'Post Your Doubt' : 'Login to Post'}
+            </Button>
+        </form>
+    )
+}
+
+export default function DoubtsPage() {
+  const [doubts, setDoubts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    loadDoubts();
+  }, []);
+
+  const loadDoubts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await Doubt.list("-upvotes");
+      setDoubts(data);
+    } catch (error) {
+      console.error("Error loading doubts:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const handleUpvote = async (doubt) => {
+    try {
+        await Doubt.update(doubt.id, { upvotes: (doubt.upvotes || 0) + 1 });
+        loadDoubts();
+    } catch(e) {
+        console.error("upvote failed", e);
+    }
+  }
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+      <div className="max-w-4xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-between items-center mb-8">
+            <div>
+                <div className="flex items-center gap-3 mb-2">
+                    <MessageSquare className="w-8 h-8 text-primary-blue"/>
+                    <h1 className="text-3xl md:text-4xl font-bold text-text-primary">Doubt Forum</h1>
+                </div>
+                <p className="text-text-secondary text-lg">Get your questions answered by mentors and peers.</p>
+            </div>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                    <Button className="gap-2 bg-primary-blue hover:bg-primary-blue-deep"><PlusCircle className="w-4 h-4" /> Ask a Doubt</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Post a New Doubt</DialogTitle></DialogHeader>
+                    <AskDoubtForm onDoubtPosted={() => { loadDoubts(); setOpen(false); }} />
+                </DialogContent>
+            </Dialog>
+        </motion.div>
+        
+        <div className="space-y-4">
+            {isLoading ? (
+                [...Array(3)].map((_,i) => <Card key={i} className="h-32 w-full animate-pulse bg-slate-200"></Card>)
+            ) : doubts.length > 0 ? (
+                doubts.map((doubt, index) => (
+                    <motion.div key={doubt.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }}>
+                        <Card className="shadow-lg border-0 bg-white/60 backdrop-blur-lg">
+                            <CardContent className="p-6">
+                                <div className="flex gap-6">
+                                    <div className="text-center">
+                                        <Button variant="ghost" className="h-auto p-1 flex-col" onClick={() => handleUpvote(doubt)}>
+                                            <ThumbsUp className="w-5 h-5 text-slate-500 hover:text-primary-blue"/>
+                                            <span className="text-sm font-bold text-text-primary">{doubt.upvotes || 0}</span>
+                                        </Button>
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-start justify-between">
+                                            <h3 className="text-lg font-bold text-text-primary mb-2">{doubt.title}</h3>
+                                            {doubt.is_answered ? (
+                                                <Badge className="bg-green-100 text-green-800 border-green-200">Answered</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="border-amber-300">Unanswered</Badge>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-text-secondary mb-3">{doubt.description}</p>
+                                        {doubt.is_answered && (
+                                            <div className="p-3 bg-slate-50 rounded-lg mt-3">
+                                                <p className="text-sm font-bold text-green-700">Answer from {doubt.answered_by_mentor_name}:</p>
+                                                <p className="text-sm text-text-secondary mt-1">{doubt.answer}</p>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-between mt-4 text-xs text-text-secondary">
+                                            <div>
+                                                <Badge variant="secondary" className="mr-2">{doubt.subject}</Badge>
+                                                <Badge variant="secondary">{doubt.exam_type.replace('_', ' ')}</Badge>
+                                            </div>
+                                            <span>Asked by {doubt.asked_by_name} • {formatDistanceToNow(new Date(doubt.created_date), { addSuffix: true })}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                ))
+            ) : (
+                <div className="text-center py-16 bg-white/60 rounded-2xl">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                    <h3 className="text-xl font-semibold text-text-primary">No Doubts Yet!</h3>
+                    <p className="text-text-secondary">Be the first one to ask a question.</p>
+                </div>
+            )}
+        </div>
+      </div>
+    </div>
+  );
+}
