@@ -1,0 +1,92 @@
+
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Clock, Brain, BookOpen } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+export default function RecentActivity({ studySessions, quizAttempts }) {
+  const activities = [
+    ...studySessions.map(session => ({
+      type: 'study',
+      subject: session.subject,
+      time: session.created_date,
+      duration: session.duration_minutes,
+      rating: session.rating
+    })),
+    ...quizAttempts.map(attempt => ({
+      type: 'quiz',
+      subject: attempt.subject,
+      time: attempt.created_date,
+      score: attempt.score,
+      totalQuestions: attempt.total_questions
+    }))
+  ]
+    .sort((a, b) => new Date(b.time) - new Date(a.time))
+    .slice(0, 8);
+
+  return (
+    <Card className="shadow-lg border-0 bg-white/60 backdrop-blur-lg h-full">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold text-text-primary flex items-center gap-2">
+          <Clock className="w-6 h-6 text-primary-blue" />
+          Recent Activity
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {activities.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary">
+              <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No recent activity</p>
+              <p className="text-sm">Start studying to see your progress here!</p>
+            </div>
+          ) : (
+            activities.map((activity, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-full ${
+                  activity.type === 'study' 
+                    ? 'bg-blue-100 text-blue-600' 
+                    : 'bg-purple-100 text-purple-600'
+                }`}>
+                  {activity.type === 'study' ? (
+                    <BookOpen className="w-4 h-4" />
+                  ) : (
+                    <Brain className="w-4 h-4" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-text-primary text-sm">
+                    {activity.type === 'study' ? 'Studied' : 'Quiz on'} <span className="font-bold">{activity.subject}</span>
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    {formatDistanceToNow(new Date(activity.time), { addSuffix: true })}
+                  </p>
+                </div>
+                {activity.type === 'study' && (
+                  <Badge variant="outline" className="text-xs font-medium border-slate-200">
+                    {activity.duration}m
+                  </Badge>
+                )}
+                {activity.type === 'quiz' && (
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs font-bold ${
+                      activity.score >= 80 
+                        ? 'bg-green-100 text-green-800' 
+                        : activity.score >= 60 
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {activity.score}%
+                  </Badge>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
