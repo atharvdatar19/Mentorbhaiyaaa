@@ -1,0 +1,150 @@
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Quiz, QuizAttempt } from '@/entities/all';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle, XCircle, ArrowRight, Loader2, Trophy } from 'lucide-react';
+import { createPageUrl } from '@/utils';
+
+export default function QuizPlayer() {
+  const [quiz, setQuiz] = useState(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [isFinished, setIsFinished] = useState(false);
+  const [score, setScore] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+  const quizId = new URLSearchParams(location.search).get('id');
+
+  useEffect(() => {
+    if (quizId) {
+      const loadQuiz = async () => {
+        setIsLoading(true);
+        try {
+          const data = await Quiz.get(quizId);
+          setQuiz(data);
+        } catch (error) {
+          console.error('Failed to load quiz:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadQuiz();
+    }
+  }, [quizId]);
+
+  const handleAnswer = (questionIndex, answerIndex) => {
+    setAnswers((prev) => ({ ...prev, [questionIndex]: answerIndex }));
+  };
+
+  const handleNext = () => {
+    if (currentQuestionIndex < quiz.questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+    } else {
+      finishQuiz();
+    }
+  };
+
+  const finishQuiz = async () => {
+    let correctAnswers = 0;
+    quiz.questions.forEach((q, index) => {
+      if (answers[index] === q.correct_answer) {
+        correctAnswers++;
+      }
+    });
+
+    const finalScore = Math.round(correctAnswers / quiz.questions.length * 100);
+    setScore(finalScore);
+    setIsFinished(true);
+
+    try {
+      await QuizAttempt.create({
+        quiz_id: quiz.id,
+        score: finalScore,
+        total_questions: quiz.questions.length,
+        correct_answers: correctAnswers,
+        subject: quiz.subject,
+        exam_type: quiz.exam_type,
+        answers: Object.entries(answers).map(([qIndex, sAnswer]) => ({
+          question_index: parseInt(qIndex),
+          selected_answer: sAnswer,
+          is_correct: quiz.questions[qIndex].correct_answer === sAnswer
+        }))
+      });
+    } catch (e) {
+      console.error("Failed to save quiz attempt:", e);
+    }
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-primary-blue" /></div>;
+  if (!quiz) return <div>Quiz not found.</div>;
+
+  if (isFinished) {
+    return (
+      <div className="p-4 md:p-8 min-h-screen bg-soft-bg flex items-center justify-center">
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
+            <Card className="w-full max-w-2xl text-center shadow-2xl">
+                <CardContent className="p-10">
+                    <Trophy className="w-16 h-16 mx-auto mb-4 text-amber-500" />
+                    <h1 className="text-3xl font-bold text-text-primary mb-2">Quiz Completed!</h1>
+                    <p className="text-lg text-text-secondary mb-6">Your Score:</p>
+                    <p className="text-6xl font-bold text-primary-blue mb-8">{score}%</p>
+                    <Button onClick={() => navigate(createPageUrl('Quizzes'))}>Back to Quizzes</Button>
+                </CardContent>
+            </Card>
+        </motion.div>
+      </div>);
+
+  }
+
+  const question = quiz.questions[currentQuestionIndex];
+  const progress = (currentQuestionIndex + 1) / quiz.questions.length * 100;
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+                <h1 className="text-2xl font-bold text-text-primary">{quiz.title}</h1>
+                <span className="text-text-secondary">{currentQuestionIndex + 1} / {quiz.questions.length}</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+        </div>
+        <Card className="shadow-lg border-0 bg-white/60 backdrop-blur-lg">
+            <CardContent className="p-8">
+                <h2 className="text-xl font-semibold mb-6 text-text-primary">{question.question}</h2>
+                <div className="space-y-3">
+                    {question.options.map((option, index) =>
+              <button
+                key={index}
+                onClick={() => handleAnswer(currentQuestionIndex, index)}
+                className={`w-full p-4 text-left rounded-lg border-2 transition-all text-text-primary ${
+                answers[currentQuestionIndex] === index ?
+                'border-primary-blue bg-blue-50' :
+                'border-slate-200 hover:border-slate-300 bg-white'}`
+                }>
+
+                            {option}
+                        </button>
+              )}
+                </div>
+                 <div className="mt-8 flex justify-end">
+                  <Button
+                onClick={handleNext}
+                disabled={answers[currentQuestionIndex] === undefined} className="bg-primary-blue text-slate-950 px-4 py-2 text-sm font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 hover:bg-primary-blue-deep">
+
+
+                    {currentQuestionIndex === quiz.questions.length - 1 ? 'Finish' : 'Next'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+            </CardContent>
+        </Card>
+      </div>
+    </div>);
+
+}
