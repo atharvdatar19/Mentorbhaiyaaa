@@ -1,0 +1,72 @@
+{
+  "name": "Doubt",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "exam_type": {
+      "type": "string",
+      "enum": [
+        "JEE",
+        "NEET",
+        "NDA",
+        "Class_10",
+        "Class_12",
+        "CLAT",
+        "VITEEE",
+        "MHTCET",
+        "GUJCET",
+        "Common"
+      ]
+    },
+    "asked_by_name": {
+      "type": "string"
+    },
+    "is_answered": {
+      "type": "boolean",
+      "default": false
+    },
+    "answer": {
+      "type": "string"
+    },
+    "answered_by_mentor_id": {
+      "type": "string"
+    },
+    "answered_by_mentor_name": {
+      "type": "string"
+    },
+    "upvotes": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "subject",
+    "exam_type",
+    "asked_by_name"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
