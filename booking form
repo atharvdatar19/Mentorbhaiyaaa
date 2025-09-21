@@ -1,0 +1,126 @@
+import React, { useState, useEffect } from 'react';
+import { Booking } from '@/entities/Booking';
+import { User } from '@/entities/User';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Clock } from 'lucide-react';
+
+export default function BookingForm({ mentor, onBookingSuccess }) {
+    const [user, setUser] = useState(null);
+    const [formData, setFormData] = useState({
+        requested_datetime: '',
+        duration_minutes: 30,
+        topic: ''
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            try {
+                const currentUser = await User.me();
+                setUser(currentUser);
+            } catch (error) {
+                console.error("User not logged in");
+            }
+        };
+        loadUser();
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!user) {
+            alert("Please log in to book a session");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await Booking.create({
+                mentor_id: mentor.id,
+                mentor_name: mentor.name,
+                mentor_email: mentor.email,
+                student_name: user.full_name,
+                requested_datetime: formData.requested_datetime,
+                duration_minutes: parseInt(formData.duration_minutes),
+                topic: formData.topic,
+                status: 'Pending'
+            });
+            
+            alert("Booking request sent successfully! The mentor will confirm your session.");
+            onBookingSuccess();
+        } catch (error) {
+            console.error("Booking failed:", error);
+            alert("Failed to book session. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium mb-2">
+                    <Calendar className="w-4 h-4 inline mr-1" />
+                    Preferred Date & Time
+                </label>
+                <Input
+                    type="datetime-local"
+                    value={formData.requested_datetime}
+                    onChange={(e) => handleChange('requested_datetime', e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    required
+                />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Session Duration
+                </label>
+                <Select value={formData.duration_minutes.toString()} onValueChange={(value) => handleChange('duration_minutes', value)}>
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="30">30 minutes</SelectItem>
+                        <SelectItem value="45">45 minutes</SelectItem>
+                        <SelectItem value="60">60 minutes</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">Topic to Discuss</label>
+                <Textarea
+                    placeholder="What would you like to discuss? (e.g., JEE preparation strategy, career guidance, etc.)"
+                    value={formData.topic}
+                    onChange={(e) => handleChange('topic', e.target.value)}
+                    required
+                />
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm text-slate-600">
+                    <strong>Rate:</strong> ₹{mentor.session_rate_per_hour || 'TBD'}/hour
+                </p>
+                <p className="text-sm text-slate-600">
+                    <strong>Estimated Cost:</strong> ₹{Math.round((mentor.session_rate_per_hour || 0) * (formData.duration_minutes / 60))}
+                </p>
+            </div>
+
+            <Button 
+                type="submit" 
+                disabled={!user || isSubmitting} 
+                className="w-full bg-primary-blue hover:bg-primary-blue-deep"
+            >
+                {isSubmitting ? 'Booking...' : user ? 'Send Booking Request' : 'Please Log In'}
+            </Button>
+        </form>
+    );
+}
