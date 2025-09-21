@@ -1,0 +1,59 @@
+{
+  "name": "CareerAssessment",
+  "type": "object",
+  "properties": {
+    "assessment_type": {
+      "type": "string",
+      "enum": [
+        "interests",
+        "personality",
+        "skills",
+        "values"
+      ],
+      "description": "Type of career assessment"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "category": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "default": 15
+    }
+  },
+  "required": [
+    "assessment_type",
+    "questions",
+    "title"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
