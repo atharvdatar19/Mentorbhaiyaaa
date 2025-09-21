@@ -1,1 +1,169 @@
 
+import React, { useState, useEffect } from "react";
+import { StreamRecommendation } from "@/entities/StreamRecommendation";
+import { User } from "@/entities/User";
+import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { BookOpen, TrendingUp, Briefcase, GraduationCap, Award, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+
+export default function StreamSelectorPage() {
+  const [streams, setStreams] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  const [assessmentTaken, setAssessmentTaken] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [streamsData, userData] = await Promise.all([
+        StreamRecommendation.list(),
+        User.me().catch(() => null)
+      ]);
+      
+      setStreams(streamsData);
+      if (userData) {
+          setUserProfile(userData);
+          setAssessmentTaken(!!userData.assessment_results?.dominant_interests);
+      }
+    } catch (error) {
+      console.error("Error loading stream data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getMatchPercentage = (stream) => {
+    if (!userProfile?.assessment_results?.dominant_interests) return 0;
+    
+    const userInterests = userProfile.assessment_results.dominant_interests;
+    const matchingInterests = stream.interest_areas.filter(interest => 
+      userInterests.includes(interest)
+    ).length;
+    
+    return Math.round(Math.min(100, (matchingInterests / stream.interest_areas.length) * 100));
+  };
+
+  const streamIcons = {
+    Science: GraduationCap,
+    Commerce: TrendingUp,
+    Arts: BookOpen,
+    Vocational: Briefcase
+  };
+
+  const streamColors = {
+    Science: "from-blue-500 to-cyan-500",
+    Commerce: "from-green-500 to-emerald-500",
+    Arts: "from-purple-500 to-pink-500",
+    Vocational: "from-orange-500 to-red-500"
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-pulse">Loading Stream Options...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen bg-soft-bg">
+      <div className="max-w-6xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <BookOpen className="w-8 h-8 text-primary-blue"/>
+            <h1 className="text-3xl md:text-4xl font-bold text-text-primary">Choose Your Stream</h1>
+          </div>
+          <p className="text-text-secondary text-lg">
+            Discover the perfect academic path based on your interests and career goals.
+          </p>
+        </motion.div>
+
+        {!assessmentTaken && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+            <Card className="bg-amber-50 border-amber-200">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <Award className="w-12 h-12 text-amber-600" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-amber-800">Take Assessment First!</h3>
+                    <p className="text-amber-700 text-sm">Complete our career assessment to get personalized stream recommendations.</p>
+                  </div>
+                  <Link to={createPageUrl("CareerAssessment")}>
+                    <Button className="bg-amber-600 hover:bg-amber-700 text-white">
+                      Start Assessment
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {streams.map((stream, index) => {
+            const IconComponent = streamIcons[stream.stream] || BookOpen;
+            const gradient = streamColors[stream.stream] || "from-gray-500 to-slate-500";
+            const matchPercentage = getMatchPercentage(stream);
+            
+            return (
+              <motion.div
+                key={stream.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+                className="h-full"
+              >
+                <Link to={createPageUrl(`StreamDetails?stream=${stream.stream}`)} className="h-full flex flex-col">
+                    <Card className="w-full shadow-lg border-0 bg-white/60 backdrop-blur-lg hover:shadow-xl transition-all duration-300 group flex-grow">
+                      <div className={`h-24 relative bg-gradient-to-br ${gradient} p-4 flex items-start justify-between rounded-t-lg`}>
+                        <h3 className="text-2xl font-bold text-white">{stream.stream}</h3>
+                        <IconComponent className="w-10 h-10 text-white/30" strokeWidth={1.5} />
+                      </div>
+                      
+                      <CardContent className="p-6 space-y-4">
+                        {assessmentTaken && (
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-text-secondary">Your Match</span>
+                              <span className="text-sm font-bold text-green-600">{matchPercentage}%</span>
+                            </div>
+                            <Progress value={matchPercentage} className="h-2" />
+                          </div>
+                        )}
+
+                        <div>
+                          <h4 className="font-semibold text-text-primary mb-2">Core Subjects</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {stream.subjects.slice(0, 4).map(subject => (
+                              <Badge key={subject} variant="secondary" className="text-xs">{subject}</Badge>
+                            ))}
+                            {stream.subjects.length > 4 && (
+                              <Badge variant="secondary" className="text-xs">+{stream.subjects.length - 4} more</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end items-center text-primary-blue font-semibold text-sm group-hover:gap-2 transition-all pt-2">
+                            <span>Explore Stream</span>
+                            <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
