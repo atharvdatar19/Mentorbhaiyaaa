@@ -1,0 +1,89 @@
+{
+  "name": "Quiz",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Quiz title"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject this quiz belongs to"
+    },
+    "exam_type": {
+      "type": "string",
+      "enum": [
+        "JEE",
+        "NEET",
+        "NDA",
+        "Class_10",
+        "Class_12",
+        "CLAT",
+        "VITEEE",
+        "MHTCET",
+        "GUJCET",
+        "Common"
+      ],
+      "description": "Target exam"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "Easy",
+        "Medium",
+        "Hard"
+      ],
+      "default": "Medium"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "default": 30
+    },
+    "total_questions": {
+      "type": "number"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correct_answer": {
+            "type": "number"
+          },
+          "explanation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "subject",
+    "exam_type",
+    "questions"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
