@@ -1,0 +1,44 @@
+import React from "react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Star, MessageSquare } from "lucide-react";
+
+export default function MentorCard({ mentor, onBookSession }) {
+  return (
+    <Card className="h-full flex flex-col shadow-lg border-0 bg-white/60 backdrop-blur-lg hover:shadow-xl transition-all duration-300">
+      <CardHeader>
+        <div className="flex items-center gap-4">
+          <img src={mentor.profile_picture_url} alt={mentor.name} className="w-16 h-16 rounded-full object-cover" />
+          <div>
+            <Link to={createPageUrl(`MentorProfile?id=${mentor.id}`)}>
+              <CardTitle className="text-lg font-bold text-text-primary hover:underline">{mentor.name}</CardTitle>
+            </Link>
+            <p className="text-sm text-text-secondary">{mentor.headline}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {mentor.expertise.slice(0, 3).map(exp => (
+            <Badge key={exp} variant="secondary">{exp}</Badge>
+          ))}
+        </div>
+        <p className="text-sm text-text-secondary line-clamp-3">
+          {mentor.bio}
+        </p>
+      </CardContent>
+      <div className="p-4 flex justify-between items-center border-t border-slate-200/60">
+        <div className="flex items-center gap-2">
+            <Badge className="text-sm bg-green-100 text-green-800 hover:bg-green-100">Free</Badge>
+        </div>
+        <Button onClick={() => onBookSession(mentor)} className="bg-primary-blue hover:bg-primary-blue-deep">
+          Book Now
+        </Button>
+      </div>
+    </Card>
+  );
+}
