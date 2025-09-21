@@ -1,0 +1,75 @@
+
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { BookOpen, Brain, Calendar, Target, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
+
+const quickActions = [
+  {
+    title: "Start Studying",
+    description: "Browse subjects & materials",
+    icon: BookOpen,
+    href: createPageUrl("Subjects"),
+    color: "blue"
+  },
+  {
+    title: "Take a Test",
+    description: "Challenge your knowledge",
+    icon: Brain,
+    href: createPageUrl("Quizzes"),
+    color: "purple"
+  },
+  {
+    title: "Plan Your Day",
+    description: "Organize your study schedule",
+    icon: Calendar,
+    href: createPageUrl("Planner"),
+    color: "teal"
+  }
+];
+
+const colorSchemes = {
+  blue: "bg-blue-600 hover:bg-blue-700",
+  purple: "bg-purple-600 hover:bg-purple-700",
+  teal: "bg-teal-600 hover:bg-teal-700",
+};
+
+export default function QuickActions() {
+  return (
+    <Card className="shadow-lg border-0 bg-white/60 backdrop-blur-lg">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold text-text-primary flex items-center gap-2">
+          <Target className="w-6 h-6 text-primary-blue" />
+          Get Started
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {quickActions.map((action, i) => (
+            <motion.div
+                key={action.title}
+                whileHover={{ y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Link to={action.href} className="group">
+                <div className={`p-5 rounded-2xl ${colorSchemes[action.color]} text-white flex flex-col justify-between h-40`}>
+                    <div>
+                        <div className="p-2 bg-white/20 rounded-lg w-min mb-3">
+                            <action.icon className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-bold text-lg">{action.title}</h3>
+                        <p className="text-sm text-white/80">{action.description}</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 self-end opacity-50 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
